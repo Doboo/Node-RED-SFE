@@ -7,6 +7,7 @@ const { createLogger, format, transports } = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const { combine, timestamp, printf } = format;
 const nrRuntimeSettings = require('./settings');
+const open = require('open');
 
 /* ------  Don't mess with anything below - unless you're a nerd ;-) ------ */
 
@@ -198,9 +199,11 @@ const run = async () => {
 			})
 			.then(() => {
 				if (!nrSettings.disableEditor) {
+          const url = `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`;
+          open(url);
 					consoleLogger.info({
 						label: 'UI Endpoint',
-						message: `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`
+						message: url
 					});
 				}
 			});
