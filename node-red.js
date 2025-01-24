@@ -1,12 +1,13 @@
 const http = require('http');
 const express = require('express');
 const RED = require('node-red');
-const { existsSync } = require('fs');
+const { existsSync, readFileSync } = require('fs');
 const { join, dirname } = require('path');
 const { createLogger, format, transports } = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const { combine, timestamp, printf } = format;
 const nrRuntimeSettings = require('./settings');
+const open = require('open');
 
 /* ------  Don't mess with anything below - unless you're a nerd ;-) ------ */
 
@@ -183,8 +184,22 @@ const run = async () => {
 		message: (!nrSettings.disableEditor).toString()
 	});
 
-	// Start the HTTP server
+	const baseURL = `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`;
+	const getAutoLoad = () => {
+		const ALFile = join(dirname(process.argv0), 'AUTOLOAD');
+		if (existsSync(ALFile)) {
+			const URL = readFileSync(ALFile, 'utf8');
+			if (URL.startsWith('/')) {
+				return `${baseURL}${URL.replace('/', '')}`;
+			} else {
+				return URL;
+			}
+		} else {
+			return undefined;
+		}
+	};
 
+	// Start the HTTP server
 	server.on('error', (e) => {
 		consoleLogger.error({
 			label: 'Could Not Start Server',
@@ -197,11 +212,34 @@ const run = async () => {
 				consoleLogger.error({ label: 'Could not start', message: err.message });
 			})
 			.then(() => {
-				if (!nrSettings.disableEditor) {
+				const AL = getAutoLoad();
+				if (AL) {
 					consoleLogger.info({
-						label: 'UI Endpoint',
-						message: `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`
+						label: 'Auto Load URL',
+						message: AL
 					});
+					open(AL).catch((err) => {
+						consoleLogger.error({
+							label: 'Could not open URL',
+							message: err.message
+						});
+					});
+				} else {
+					if (develop) {
+						open(baseURL).catch((err) => {
+							consoleLogger.error({
+								label: 'Could not open URL',
+								message: err.message
+							});
+						});
+					} else {
+						if (!nrSettings.disableEditor) {
+							consoleLogger.info({
+								label: 'UI Endpoint',
+								message: baseURL
+							});
+						}
+					}
 				}
 			});
 	});
