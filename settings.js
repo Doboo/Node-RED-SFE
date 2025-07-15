@@ -5,15 +5,14 @@ const localfilesystem = require('@node-red/runtime/lib/nodes/context/localfilesy
  *
  * Note : The following properties/objects will be ignored as they are integral to the running of Node-RED SFE
  *  - userDir
+ *  - flowFile
  *  - logging
  *  - editorTheme
  *  - readOnly
- *  - contextStorage.file.config.dir
  */
 
 module.exports = {
 	uiPort: 1880,
-	flowFile: 'flows.json',
 	flowFilePretty: true,
 	httpAdminRoot: '/',
 	httpNodeRoot: '/',
@@ -41,11 +40,9 @@ module.exports = {
 	contextStorage: {
 		default: 'memory',
 		memory: { module: memory },
-		/* Don't remove this store, as it gets re-configured */
 		file: { module: localfilesystem }
 	},
 
 	/* Do what you want */
-	/* Note : SFELOG will get added to this */
 	functionGlobalContext: {}
 };

@@ -91,15 +91,14 @@ const localfilesystem = require('@node-red/runtime/lib/nodes/context/localfilesy
  *
  * Note : The following properties/objects will be ignored as they are integral to the running of Node-RED SFE
  *  - userDir
+ *  - flowFile
  *  - logging
  *  - editorTheme
  *  - readOnly
- *  - contextStorage.file.config.dir
  */
 
 module.exports = {
 	uiPort: 1880,
-	flowFile: 'flows.json',
 	flowFilePretty: true,
 	httpAdminRoot: '/',
 	httpNodeRoot: '/',
@@ -127,14 +126,13 @@ module.exports = {
 	contextStorage: {
 		default: 'memory',
 		memory: { module: memory },
-		/* Don't remove this store, as it gets re-configured */
 		file: { module: localfilesystem }
 	},
 
 	/* Do what you want */
-	/* Note : SFELOG will get added to this */
 	functionGlobalContext: {}
 };
+
  ```
 
  There are a few important things to change here.
@@ -145,43 +143,25 @@ module.exports = {
 
   You are free to add anything in here that is supported by Node-RED, but pay attention to the stuff that is overwritten.
 
- ## ReadOnly File System.
+ It should be noted: if the editor is left open, changes are not persisted the next time you restart the SFE, and of course you open the ability for your flows to be exported, however, efforts are made to stop this, but it is not foolproof 
 
-The final executable will contain an embedded file system, which is read only.
-Therefore, if you do not block access to the Editor (`disableEditor`) and try to deploy (or install Nodes) after, it will fail.
+ ## What is this magic?
 
-Node-RED SFE can actually operate in two ways:
+The final executable will contain an embedded file system, and this contains
 
- - With an Embedded flow (the main use case)
- - A standard Node-RED portable application
+ - Node RED itself
+ - It's Modules (which I ESBuild some of them)
+ - An embedded flows file (your flows)
 
- Both scenarios will output an SFE, so Node JS is still not required in either setup.
- The mode is manipulated based on whether there is a directory called `NRUserDir`.
+ The Node RED Home Directory however, is compressed, and embdded into the final executable.  
+ During runtime, this packaged Home Directory is expanded into a hidden folder, where the execuatble is run from (`.node-red-sfe`) - The flows file, remains embedded
 
- When you run `npm run-script build`, it will check if there is such a directory.
- If there is, it will package it up and cause it to "lock" to the developed/embedded flow.
+ This ~~allows~~ should allow full support for the Nodes available in the catalogue.  
+ During the packaging stage, it is normal to see a few warnings
 
- If the editor is left accessible, the mode is identified by the login image, as well as certain actions being disabled that won't be supported in a ReadOnly file system.
 
- <img src="./resources/node-red-256-embedded.png" alt="drawing" width="150"/>
- <img src="./resources/node-red-256-external.png" alt="drawing" width="150"/>
 
-`npm run-script develop` basically just starts Node-RED and sets the `userDir` to this folder.
- `NRUserDir` is no different from the `.node-red` directory.
 
- If a flow is not embedded, the SFE will create a directory called `NRUserDir` on startup if it's not already been created.
- This allows you to deploy the executable with a modifiable flow (but note: this also allows you to view the flow code)
-
- For a typical use case, you will:
-
-  - `npm run-script develop`
-  - Design your application
-  - Set `disableEditor` to true
-  - `npm run-script build`
-  - `npm run-script package`
-  - Distribute the SFE
-
-  How you use this toolkit is entirely up to you.
 
  ## Context Stores.
 
@@ -190,59 +170,11 @@ Node-RED SFE can actually operate in two ways:
   - `memory` (default)
   - `file`
 
-  The file context store, is configured to use the directory the executable is run from, if a flow is embedded
-
-
-
- ## Application Logging.
-
- The SFE adds a global logging function to Node-RED to allow debug logs to be created.
-
- ```js
- const Log = global.get('SFELOG');
- Log('info','My Application','Hello, World')
- ```
-
- This is a daily rotated log file.
- The log file is named `sfe-%DATE%.log` with a 7-day retention policy.
-
- The date format is **YYYY-MM-DD-HH**
-
- These log entries are also printed at the console but are identified as `FLOW:Label`
- Example:
-
- ```
- /* Console */
- [2024-07-14 03:29:53] info     FLOW:My Application    : Hello, World
-
- /* Log File */
- [2024-07-14 03:29:53] info     My Application    : Hello, World
- ```  
-
- **Note**: The log file only gets created after it's been compiled to an SFE regardless of mode.
-
-## Current Limitations (To do)
-
- - Modules being loaded in from a `function` node (ie the `setup` tab), seem troubled - no error, they just don't run (at least for me)
- - Modules being installed to the parent project (outside `NRUserDir`), can be buggy, especially if there are path resolutions in that module ex: `require(path.join('../','magic'))`
-
-   Example:
-   
-   Installing `node-red-node-serialport` within the editor, is fully supported, but if installing `serialport` its self for `function` node use, or installing it to expose via `functionGlobalContext`
-   doesn't seem to want to play nice - complains that the native binding isn't found, this is due to path resolutions taking place.
-
-- The `settings` object `httpStatic` must use asbolute paths, as using relative paths will result in that relativity being based on the Virtual File System,
-  You can detect the path to use via `process.argv0`
-
-   Example:
-   ```
-   /* Set the static folder to a folder called `static-fodler` that resides in the same location as the SFE */
-   httpStatic: {'path':join(dirname(process.argv0), 'static-folder')}
-   ```
-
 ## Disclaimer
 
-   Node-RED-SFE, is NOT designed to be a Smart Fire Engine
+   Node-RED-SFE, is NOT designed to be a **S**mart **F**ire **E**ngine
+
+   (Great work CPT)
 
 
 

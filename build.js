@@ -1,14 +1,13 @@
 const esbuild = require('esbuild');
-const { cp, readFile, writeFile, unlink } = require('fs/promises');
-const { existsSync } = require('fs');
+const fs = require('fs');
 const path = require('path');
+const archiver = require('archiver');
+const { userDir, outputDir, inputFile, outputName } = require('./constants');
 
-const userDir = './NRUserDir';
-const outputDir = './build';
-const inputFile = './node-red.js';
-const outputName = 'node-red-bundle.js';
 const outputFile = path.join(outputDir, outputName);
 const finalPkg = path.join(outputDir, 'package.json');
+const projectName = path.dirname(__filename).split(path.sep).pop();
+
 const nrPackageFile = path.join(
 	__dirname,
 	'node_modules/node-red/package.json'
@@ -18,22 +17,6 @@ const requestSourceFile = path.join(
 	'node_modules/@node-red/nodes/core/network/21-httprequest.js'
 );
 
-const projectName = path.dirname(__filename).split(path.sep).pop();
-
-/* Updated Later */
-let isFlowBeingEmbedded = false;
-
-/* Things to not include during bundling */
-const externals = [
-	'@node-red/nodes',
-	'@node-red/editor-client',
-	'@node-rs',
-	'oauth2orize',
-	'got',
-	'./resources'
-];
-
-/* Native Binding Handling */
 const nativeNodeModulesPlugin = {
 	name: 'native-node-modules',
 	setup(build) {
@@ -62,28 +45,37 @@ const nativeNodeModulesPlugin = {
 	}
 };
 
+/* Things to not include during bundling */
+const externals = [
+	'@node-red/nodes',
+	'@node-red/editor-client',
+	'@node-rs',
+	'oauth2orize',
+	'got',
+	'./resources'
+];
+
 // File exists
 const fileExists = (path) => {
-	return existsSync(path);
+	return fs.existsSync(path);
 };
 
 /* Utility Functions */
-const patchFile = async (filePath, replacements) => {
-	let content = await readFile(filePath, 'utf-8');
+const patchFile = (filePath, replacements) => {
+	let content = fs.readFileSync(filePath, 'utf-8');
 	replacements.forEach(([searchValue, replaceValue]) => {
 		content = content.replace(searchValue, replaceValue);
 	});
-	await writeFile(filePath, content);
+	fs.writeFileSync(filePath, content);
 };
 
-const copyExternalDependencies = async (externals, outputDir) => {
-	const copyTasks = externals.map(async (ext) => {
+const copyExternalDependencies = (externals, outputDir) => {
+	externals.map(async (ext) => {
 		const extPath = ext.startsWith('./') ? ext : path.join('node_modules', ext);
 		if (fileExists(extPath)) {
-			await cp(extPath, path.join(outputDir, extPath), { recursive: true });
+			fs.cpSync(extPath, path.join(outputDir, extPath), { recursive: true });
 		}
 	});
-	await Promise.all(copyTasks);
 };
 
 const esBuildPackage = async (file) => {
@@ -93,6 +85,7 @@ const esBuildPackage = async (file) => {
 		platform: 'node',
 		target: 'node20',
 		allowOverwrite: true,
+		keepNames: true,
 		outfile: file
 	};
 
@@ -102,14 +95,11 @@ const esBuildPackage = async (file) => {
 	const packageFile = `${pathSplit[0]}/${pathSplit[1]}/package.json`;
 	const packageJson = require(path.join(__dirname, packageFile));
 	packageJson.type = 'commonjs';
-	await writeFile(packageFile, JSON.stringify(packageJson, null, 2));
+	await fs.writeFileSync(packageFile, JSON.stringify(packageJson, null, 2));
 };
 
 /* Main */
 const run = async () => {
-	// Check if flow is being embedded
-	isFlowBeingEmbedded = fileExists(userDir);
-
 	// Build to CJS
 	await esBuildPackage('node_modules/got/dist/source/index.js');
 	await esBuildPackage('node_modules/form-data-encoder/lib/index.js');
@@ -123,6 +113,7 @@ const run = async () => {
 	const config = {
 		entryPoints: [inputFile],
 		plugins: [nativeNodeModulesPlugin],
+		keepNames: true,
 		bundle: true,
 		platform: 'node',
 		target: 'node20',
@@ -135,7 +126,7 @@ const run = async () => {
 	// Patch the output file with Node-RED version and embedded flow modifications
 	const nrVersion = require(nrPackageFile).version;
 	const replacements = [
-		['= getVersion()', `= "${nrVersion}"`],
+		['var version;', `var version = "${nrVersion}";`],
 		['{SFE_PROJECT_DIR}', projectName]
 	];
 
@@ -147,31 +138,40 @@ const run = async () => {
 	]);
 
 	// Copy external dependencies to the output directory
-	await copyExternalDependencies(externals, outputDir);
+	copyExternalDependencies(externals, outputDir);
 
 	// Create final package.json
 	const pkg = {
 		name: 'node-red-sfe',
 		bin: outputName,
 		pkg: {
-			assets: ['./node_modules/**', './resources/**']
+			assets: [
+				'./node_modules/**',
+				'./resources/**',
+				`${userDir}.dat`,
+				'./flows.json'
+			]
 		}
 	};
 
-	if (isFlowBeingEmbedded) {
-		pkg.pkg.assets.push(`${userDir}/**`);
-
-		const sessionsPath = path.join(userDir, '.sessions.json');
-		if (existsSync(sessionsPath)) {
-			await unlink(sessionsPath);
-		}
-
-		await cp(userDir, path.join(outputDir, userDir), {
-			recursive: true
-		});
+	const sessionsPath = path.join(userDir, '.sessions.json');
+	if (fileExists(sessionsPath)) {
+		fs.unlinkSync(sessionsPath);
 	}
 
-	await writeFile(finalPkg, JSON.stringify(pkg, null, 2));
+	const output = fs.createWriteStream(`${userDir}.dat`);
+	output.on('close', function () {
+		fs.copyFileSync(`${userDir}.dat`, path.join(outputDir, `${userDir}.dat`));
+		fs.copyFileSync('./flows.json', path.join(outputDir, 'flows.json'));
+	});
+
+	const Archiver = archiver('zip');
+
+	Archiver.pipe(output);
+	Archiver.directory(userDir, false);
+	Archiver.finalize();
+
+	fs.writeFileSync(finalPkg, JSON.stringify(pkg, null, 2));
 };
 
 run().catch((err) => {

@@ -1,106 +1,69 @@
 const http = require('http');
 const express = require('express');
 const RED = require('node-red');
-const { existsSync, readFileSync } = require('fs');
+const fs = require('fs');
 const { join, dirname } = require('path');
-const { createLogger, format, transports } = require('winston');
-const DailyRotateFile = require('winston-daily-rotate-file');
-const { combine, timestamp, printf } = format;
 const nrRuntimeSettings = require('./settings');
 const open = require('open');
+const AdmZip = require('adm-zip');
+const { userDir, ns } = require('./constants');
 
 /* ------  Don't mess with anything below - unless you're a nerd ;-) ------ */
 
+console.clear();
+
+console.log('Welcome to Node-RED-SFE');
+console.log('===================');
+console.log('');
+
+const log = (level, log) => {
+	console.log(`${new Date().toISOString()} [${level}] ${log}`);
+};
+
+// OS Volume Prefix
 const pathPrefix = process.platform === 'win32' ? 'c:/' : '/';
 
-const logFormat = printf(({ level, message, label, timestamp }) => {
-	switch (typeof message) {
-		case 'object':
-			message = JSON.stringify(message);
-			break;
-	}
-	return `[${timestamp}] ${level}\t${label?.padEnd(23, ' ')}: ${message}`;
-});
+log('info', `Platform: ${process.platform}`);
+log('info', `Node Version: ${process.version}`);
 
-const consoleLogger = createLogger({
-	format: combine(
-		format.colorize(),
-		timestamp({ format: 'YYYY-MM-DD hh:mm:ss' }),
-		logFormat
-	),
-	transports: [new transports.Console()]
-});
-
-let flowLogger;
-
-if (process.pkg !== undefined) {
-	const transport = new DailyRotateFile({
-		filename: join(dirname(process.argv0), 'sfe-%DATE%.log'),
-		datePattern: 'YYYY-MM-DD-HH',
-		zippedArchive: true,
-		maxSize: '20m',
-		maxFiles: '7d'
-	});
-
-	flowLogger = createLogger({
-		format: combine(timestamp({ format: 'YYYY-MM-DD hh:mm:ss' }), logFormat),
-		transports: [transport]
-	});
-}
+// Important paths
+const embeddedUserDirSnapshot = `${pathPrefix}snapshot/${ns}/build/${userDir}.dat`;
+const embeddedUserFlowFile = `${pathPrefix}snapshot/${ns}/build/flows.json`;
 
 // In develop mode?
-const develop = process.argv[2] === '--develop';
+const developMode = process.argv[2] === '--develop';
 
-// The embedded path of the userDir (don't mess)
-const ns = '{SFE_PROJECT_DIR}';
-const userDir = 'NRUserDir';
-const userDirPath = `${pathPrefix}snapshot/${ns}/build/${userDir}`;
-
-// File exists?
-const checkFileExists = (path) => {
-	return existsSync(path);
-};
-
-const isEmbedded = checkFileExists(userDirPath);
-
-// Get userDir
-const getUserDir = () => {
-	if (develop) {
+// Get Flow File
+const getUserDirPath = () => {
+	if (developMode) {
 		return join(__dirname, userDir);
 	}
-
-	if (process.pkg !== undefined) {
-		if (isEmbedded) {
-			return userDirPath;
-		} else {
-			return join(dirname(process.argv0), userDir);
-		}
-	}
+	return join(dirname(process.execPath), userDir);
 };
 
-// Node-RED log
-const nrLog = (level, label, message) => {
-	if (process.pkg !== undefined && flowLogger !== undefined) {
-		flowLogger.log({ level, label: label, message });
+// Get Flow File
+const getFlowFile = () => {
+	if (developMode) {
+		return join(__dirname, 'flows.json');
 	}
-	consoleLogger.log({ level, label: `FLOW:${label}`, message });
+
+	return embeddedUserFlowFile;
 };
 
 // Main
 const run = async () => {
-	console.clear();
-	consoleLogger.info({ label: 'Node Version', message: process.versions.node });
 	const app = express();
 	const server = http.createServer(app);
 
 	delete nrRuntimeSettings.userDir;
 	delete nrRuntimeSettings.logging;
 	delete nrRuntimeSettings.editorTheme;
+	delete nrRuntimeSettings.flowFile;
 	delete nrRuntimeSettings.readOnly;
-	delete nrRuntimeSettings.contextStorage.file.config?.dir;
 
 	const nrSettings = {
-		userDir: getUserDir(),
+		userDir: getUserDirPath(),
+		flowFile: getFlowFile(),
 		logging: {
 			console: {
 				level: 'off',
@@ -110,10 +73,10 @@ const run = async () => {
 		},
 		editorTheme: {
 			header: {
-				title: `Node-RED SFE ${develop ? '[Design Time]' : '[Run Time]'}`
+				title: `Node-RED SFE ${developMode ? '[Design Time]' : '[Run Time]'}`
 			},
 			page: {
-				title: `Node-RED SFE ${develop ? '[Design Time]' : '[Run Time]'}`
+				title: `Node-RED SFE ${developMode ? '[Design Time]' : '[Run Time]'}`
 			},
 			projects: {
 				enabled: false
@@ -123,35 +86,25 @@ const run = async () => {
 		...nrRuntimeSettings
 	};
 
-	if (!nrSettings.functionGlobalContext) {
-		nrSettings.functionGlobalContext = {};
-	}
-	nrSettings.functionGlobalContext.SFELOG = nrLog;
-
-	if (develop) {
+	if (developMode) {
 		nrSettings.disableEditor = false;
 	}
 
-	if (isEmbedded) {
+	if (!developMode) {
+		if (!fs.existsSync(getUserDirPath())) {
+			const zip = new AdmZip(embeddedUserDirSnapshot);
+			zip.extractAllTo(getUserDirPath(), true);
+		}
+
 		nrSettings.editorTheme.header.image = `${pathPrefix}snapshot/${ns}/build/resources/node-red.png`;
 		nrSettings.editorTheme.page.css = `${pathPrefix}snapshot/${ns}/build/resources/sfe.css`;
 		nrSettings.readOnly = true;
-
 		nrSettings.editorTheme.login = {
 			image: `${pathPrefix}snapshot/${ns}/build/resources/node-red-256-embedded.png`
 		};
-
-		/* Re-configure file context store */
-		if (nrSettings.contextStorage.file.config === undefined) {
-			nrSettings.contextStorage.file.config = {};
-		}
-		nrSettings.contextStorage.file.config.dir = join(
-			dirname(process.argv0),
-			'./'
-		);
 	} else {
 		nrSettings.editorTheme.login = {
-			image: `${pathPrefix}snapshot/${ns}/build/resources/node-red-256-external.png`
+			image: join(__dirname, 'resources', 'node-red-256-external.png')
 		};
 	}
 
@@ -160,35 +113,14 @@ const run = async () => {
 	app.use(nrSettings.httpAdminRoot, RED.httpAdmin);
 	app.use(nrSettings.httpNodeRoot, RED.httpNode);
 
-	consoleLogger.info({
-		label: 'Node-RED Version',
-		message: RED.settings.version
-	});
-	consoleLogger.info({
-		label: 'Mode',
-		message: develop
-			? 'Design Time'
-			: isEmbedded
-				? 'Run Time (Embedded)'
-				: 'Run Time'
-	});
-	consoleLogger.info({ label: 'Namespace', message: ns });
-	consoleLogger.info({
-		label: 'Embedded UserDir Found',
-		message: isEmbedded.toString()
-	});
-	consoleLogger.info({ label: 'UserDir', message: getUserDir() });
-	consoleLogger.info({ label: 'Flow File', message: nrSettings.flowFile });
-	consoleLogger.info({
-		label: 'UI Enabled',
-		message: (!nrSettings.disableEditor).toString()
-	});
+	log('info', `Node-RED Version: ${RED.version()}`);
+	log('info', `Run Mode: ${developMode ? 'Develop' : 'Production'}`);
 
 	const baseURL = `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`;
 	const getAutoLoad = () => {
 		const ALFile = join(dirname(process.argv0), 'AUTOLOAD');
-		if (existsSync(ALFile)) {
-			const URL = readFileSync(ALFile, 'utf8');
+		if (fs.existsSync(ALFile)) {
+			const URL = fs.readFileSync(ALFile, 'utf8');
 			if (URL.startsWith('/')) {
 				return `${baseURL}${URL.replace('/', '')}`;
 			} else {
@@ -200,54 +132,31 @@ const run = async () => {
 	};
 
 	// Start the HTTP server
-	server.on('error', (e) => {
-		consoleLogger.error({
-			label: 'Could Not Start Server',
-			message: e.message
-		});
-	});
 	server.on('listening', (e) => {
 		RED.start()
 			.catch((err) => {
-				consoleLogger.error({ label: 'Could not start', message: err.message });
+				log('error', err.message);
 			})
 			.then(() => {
 				const AL = getAutoLoad();
 				if (AL) {
-					consoleLogger.info({
-						label: 'Auto Load URL',
-						message: AL
-					});
-					open(AL).catch((err) => {
-						consoleLogger.error({
-							label: 'Could not open URL',
-							message: err.message
-						});
-					});
+					log('info', `Opening AL: ${AL}`);
+					open(AL);
 				} else {
-					if (develop) {
-						open(baseURL).catch((err) => {
-							consoleLogger.error({
-								label: 'Could not open URL',
-								message: err.message
-							});
-						});
-					} else {
-						if (!nrSettings.disableEditor) {
-							consoleLogger.info({
-								label: 'UI Endpoint',
-								message: baseURL
-							});
-						}
+					if (developMode) {
+						log('info', `Opening AL: ${baseURL}`);
+						open(baseURL);
 					}
 				}
+				log('info', 'Starting...DONE');
 			});
 	});
+	log('info', 'Starting...');
 	server.listen(nrSettings.uiPort);
 };
 
 // Run the main function and handle any errors
 run().catch((err) => {
-	consoleLogger.error({ label: 'Could not start', message: err.message });
+	log('error', err.message);
 	process.exit(1);
 });

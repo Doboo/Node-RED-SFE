@@ -1,8 +1,8 @@
-ul.red-ui-header-toolbar > li:first-of-type,
-ul.red-ui-header-toolbar > li:last-of-type {
+#red-ui-header > ul {
 	filter: grayscale();
 	pointer-events: none;
-	opacity: 0.4;
+	opacity: 0;
+	display: none;
 }
 
 #red-ui-header {
@@ -12,5 +12,5 @@ ul.red-ui-header-toolbar > li:last-of-type {
 #red-ui-palette {
 	filter: grayscale();
 	pointer-events: none;
-	opacity: 0.4;
+	opacity: 0.5;
 }
