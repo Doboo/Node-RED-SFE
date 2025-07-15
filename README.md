@@ -9,7 +9,7 @@ It's been used in the following environments:
 
  - Home IoT Automation
  - Data Processing
- - Enterprize Business Automation
+ - Enterprise Business Automation
  - Plant & Manufacturing Automation
  - Bespoke Application Design
  - Fun
@@ -49,9 +49,9 @@ It's been used in the following environments:
    - Your Code/IP is not easily accessed
    - Portable Application
 
-   Using API's from https://esbuild.github.io and https://github.com/yao-pkg/pkg
+   Using APIs from https://esbuild.github.io and https://github.com/yao-pkg/pkg
 
-   This toolkit allows you to design a flow, an application, a dashboard, or whatever you like. ESBulds it all and outputs a Single File Executable
+   This toolkit allows you to design a flow, an application, a dashboard, or whatever you like. ESBuilds it all and outputs a Single File Executable
    that starts up your flow as if it were a compiled/native application, without the need for Node JS to be installed.
 
    This results in the code/flow data not being easily accessible, and the ability to 'modify' or 'play' with the end result is severely inhibited.
@@ -77,7 +77,7 @@ Node-RED SFE currently uses Node-RED 4.
  - Issue `npm run-script build`
  - Issue `npm run-script package`
 
- You will now have an SFE in `./build/dist` - Congraulations!
+ You will now have an SFE in `./build/dist` - Congratulations!
 
  ## Configuration
 
