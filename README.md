@@ -153,7 +153,7 @@ The final executable will contain an embedded file system, and this contains
  - It's Modules (which I ESBuild some of them)
  - An embedded flows file (your flows)
 
- The Node RED Home Directory however, is compressed, and embdded into the final executable.  
+ The Node RED Home Directory however, is compressed, and embedded into the final executable.  
  During runtime, this packaged Home Directory is expanded into a hidden folder, where the execuatble is run from (`.node-red-sfe`) - The flows file, remains embedded
 
  This ~~allows~~ should allow full support for the Nodes available in the catalogue.  
