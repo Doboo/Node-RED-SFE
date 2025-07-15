@@ -5,4 +5,5 @@ NRUserDir
 package-lock.json
 .DS_Store
 .node-red-sfe
+.node-red-sfe.dat
 flows.json
