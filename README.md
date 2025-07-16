@@ -149,6 +149,7 @@ module.exports = {
 
 The final executable will contain an embedded file system, and this contains
 
+ - An embedded NodeJS Runtime
  - Node RED itself
  - It's Modules (which I ESBuild some of them)
  - An embedded flows file (your flows)
