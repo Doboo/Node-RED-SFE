@@ -7,6 +7,11 @@ const nrRuntimeSettings = require('./settings');
 const open = require('open');
 const AdmZip = require('adm-zip');
 const { userDir, noLoadUserDir, ns } = require('./constants');
+const dayjs = require('dayjs');
+const localizedFormat = require('dayjs/plugin/localizedFormat');
+const localeData = require('dayjs/plugin/localeData');
+dayjs.extend(localizedFormat);
+dayjs.extend(localeData);
 
 /* ------  Don't mess with anything below - unless you're a nerd ;-) ------ */
 
@@ -16,15 +21,20 @@ console.log('Welcome to Node-RED-SFE');
 console.log('===================');
 console.log('');
 
-const log = (level, log) => {
-	console.log(`${new Date().toISOString()} [${level}] ${log}`);
+const log = (level, subject, message) => {
+	level = `[${level}]`;
+	const paddedSubject = subject.padEnd(17, ' ');
+	const paddedLevel = level.padEnd(7, ' ').toUpperCase();
+	console.log(
+		`${dayjs().format('L LTS')} ${paddedLevel} ${paddedSubject} : ${message}`
+	);
 };
 
 // OS Volume Prefix
 const pathPrefix = process.platform === 'win32' ? 'c:/' : '/';
 
-log('info', `Platform: ${process.platform}`);
-log('info', `Node Version: ${process.version}`);
+log('info', 'Platform', process.platform);
+log('info', 'Node Version', process.version);
 
 // Important paths
 const embeddedUserDirSnapshot = `${pathPrefix}snapshot/${ns}/build/${userDir}.dat`;
@@ -70,6 +80,8 @@ const getRunModeText = () => {
 		return 'Production (Locked)';
 	}
 };
+
+process.env['SFE'] = getRunModeText();
 
 // Main
 const run = async () => {
@@ -124,6 +136,11 @@ const run = async () => {
 		};
 	}
 
+	nrSettings.functionGlobalContext = nrSettings.functionGlobalContext || {};
+	nrSettings.functionGlobalContext.SFE = {
+		log: log
+	};
+
 	// Initialize Node-RED with the given settings
 	RED.init(server, nrSettings);
 	app.use(nrSettings.httpAdminRoot, RED.httpAdmin);
@@ -131,17 +148,17 @@ const run = async () => {
 
 	if (!developMode && !noLoad) {
 		if (!fs.existsSync(getUserDirPath())) {
-			log('info', `Unpacking userDir...`);
+			log('info', 'userDir', 'Unpacking userDir...');
 			const zip = new AdmZip(embeddedUserDirSnapshot);
 			zip.extractAllTo(getUserDirPath(), true);
-			log('info', `Unpacking userDir...Done`);
+			log('info', 'userDir', 'Unpacking userDir...Done');
 		}
 	}
 
-	log('info', `Node-RED Version: ${RED.version()}`);
-	log('info', `Run Mode: ${getRunModeText()}`);
-	log('info', `User Directory: ${getUserDirPath()}`);
-	log('info', `Flow File: ${getFlowFile()}`);
+	log('info', 'Node-RED Version', RED.version());
+	log('info', 'Run Mode', getRunModeText());
+	log('info', 'User Directory', getUserDirPath());
+	log('info', 'Flow File', getFlowFile());
 
 	const baseURL = `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`;
 	const getAutoLoad = () => {
@@ -162,28 +179,27 @@ const run = async () => {
 	server.on('listening', (e) => {
 		RED.start()
 			.catch((err) => {
-				log('error', err.message);
+				log('error', 'on listening', err.message);
 			})
 			.then(() => {
 				const AL = getAutoLoad();
 				if (AL) {
-					log('info', `Opening: ${AL}`);
+					log('info', 'Autoload', AL);
 					open(AL);
 				} else {
 					if (developMode) {
-						log('info', `Opening: ${baseURL}`);
+						log('info', 'Autoload', baseURL);
 						open(baseURL);
 					}
 				}
-				log('info', 'Starting...DONE');
+				log('info', 'Startup', 'Done');
 			});
 	});
-	log('info', 'Starting...');
 	server.listen(nrSettings.uiPort);
 };
 
 // Run the main function and handle any errors
 run().catch((err) => {
-	log('error', err.message);
+	log('error', 'on run', err.message);
 	process.exit(1);
 });

@@ -181,7 +181,7 @@ this will:
 
  To do this, call your SFE with the following arg
 
- ```
+ ```sh
  my-sfe --noload
  ```
 
@@ -192,11 +192,21 @@ it will load your default browser with the URL that is contained in `AUTOLOAD`
  - `/URI` : Appends the URI to the admin endpoint
  - `https://...` : Loads this full URL
 
+## SFE Environment Variable.
+There is an Environment Variable of `SFE` and this denotes the mode currently running.  
+if it does not exist - Node-RED SFE is currently not being used
+
+## Logging Function.
+There is a built in `log` function, that is exposed in the Global Context, an example is below, it prints the entry to the console:
+```js
+global.get('SFE').log('info', 'MyApplication', 'Hello, World')
+```
+
 ## Disclaimer
 
-   Node-RED-SFE, is NOT designed to be a **S**mart **F**ire **E**ngine
+Node-RED-SFE, is NOT designed to be a **S**mart **F**ire **E**ngine
 
-   (Great work CPT)
+(Great work CPT)
 
 
 
