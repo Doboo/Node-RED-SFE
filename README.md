@@ -182,7 +182,7 @@ this will:
  To do this, call your SFE with the following arg
 
  ```sh
- my-sfe --noload
+ MySFEApp --noload
  ```
 
  ## Autoload a web interface.
