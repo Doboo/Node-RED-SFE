@@ -182,7 +182,7 @@ this will:
  To do this, call your SFE with the following arg
 
  ```
- my-sfe --noload
+ my_app --noload
  ```
 
  ## Autoload a web interface.
