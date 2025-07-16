@@ -67,21 +67,21 @@ const getFlowFile = () => {
 	return embeddedUserFlowFile;
 };
 
-const getRunModeText = () => {
+const getRunModeText = (usenumber) => {
 	if (developMode) {
-		return 'Design Time';
-	}
-
-	if (!developMode && noLoad) {
-		return 'Production (Free Roam)';
+		return usenumber ? 1 : 'Design Time';
 	}
 
 	if (!developMode && !noLoad) {
-		return 'Production (Locked)';
+		return usenumber ? 2 : 'Production (Locked)';
+	}
+
+	if (!developMode && noLoad) {
+		return usenumber ? 3 : 'Production (Free Roam)';
 	}
 };
 
-process.env['SFE'] = getRunModeText();
+process.env['SFE'] = getRunModeText(true);
 
 // Main
 const run = async () => {

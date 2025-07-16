@@ -196,6 +196,10 @@ it will load your default browser with the URL that is contained in `AUTOLOAD`
 There is an Environment Variable of `SFE` and this denotes the mode currently running.  
 if it does not exist - Node-RED SFE is currently not being used
 
+ - 1:  `Design Time`
+ - 2:  `Production (Locked)`
+ - 3:  `Production (Free Roam)` (`--noload`)
+
 ## Logging Function.
 There is a built in `log` function, that is exposed in the Global Context, an example is below, it prints the entry to the console:
 ```js
