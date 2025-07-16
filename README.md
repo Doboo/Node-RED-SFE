@@ -170,6 +170,28 @@ The final executable will contain an embedded file system, and this contains
   - `memory` (default)
   - `file`
 
+## Disable Loading Embedded Flows.
+After your SFE has been built, you can also use the executable as a standard Node RED application.
+this will:
+
+ - Switch the Home Directory to `.node-red` (Next to the executable)
+ - Switch to using the modifiable flows file (`.node-red/flows.json`)
+
+ Note: The settings that your baked in will still be used
+
+ To do this, call your SFE with the following arg
+
+ ```
+ my-sfe --noload
+ ```
+
+ ## Autoload a web interface.
+If you include a file of `AUTOLOAD` - along side your SFE, after the SFE has started  
+it will load your default browser with the URL that is contained in `AUTOLOAD`
+
+ - `/URI` : Appends the URI to the admin endpoint
+ - `https://...` : Loads this full URL
+
 ## Disclaimer
 
    Node-RED-SFE, is NOT designed to be a **S**mart **F**ire **E**ngine

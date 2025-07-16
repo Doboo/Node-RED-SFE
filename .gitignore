@@ -7,3 +7,4 @@ package-lock.json
 .node-red-sfe
 .node-red-sfe.dat
 flows.json
+.flows.json.backup

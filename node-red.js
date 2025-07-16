@@ -6,7 +6,7 @@ const { join, dirname } = require('path');
 const nrRuntimeSettings = require('./settings');
 const open = require('open');
 const AdmZip = require('adm-zip');
-const { userDir, ns } = require('./constants');
+const { userDir, noLoadUserDir, ns } = require('./constants');
 
 /* ------  Don't mess with anything below - unless you're a nerd ;-) ------ */
 
@@ -32,11 +32,15 @@ const embeddedUserFlowFile = `${pathPrefix}snapshot/${ns}/build/flows.json`;
 
 // In develop mode?
 const developMode = process.argv[2] === '--develop';
+const noLoad = developMode === false && process.argv[2] === '--noload';
 
-// Get Flow File
+// Get User Dir
 const getUserDirPath = () => {
 	if (developMode) {
 		return join(__dirname, userDir);
+	}
+	if (noLoad) {
+		return join(dirname(process.execPath), noLoadUserDir);
 	}
 	return join(dirname(process.execPath), userDir);
 };
@@ -46,8 +50,25 @@ const getFlowFile = () => {
 	if (developMode) {
 		return join(__dirname, 'flows.json');
 	}
+	if (noLoad) {
+		return join(getUserDirPath(), 'flows.json');
+	}
 
 	return embeddedUserFlowFile;
+};
+
+const getRunModeText = () => {
+	if (developMode) {
+		return 'Design Time';
+	}
+
+	if (!developMode && noLoad) {
+		return 'Production (Free Roam)';
+	}
+
+	if (!developMode && !noLoad) {
+		return 'Production (Locked)';
+	}
 };
 
 // Main
@@ -73,10 +94,10 @@ const run = async () => {
 		},
 		editorTheme: {
 			header: {
-				title: `Node-RED SFE ${developMode ? '[Design Time]' : '[Run Time]'}`
+				title: `Node-RED SFE [${getRunModeText()}]`
 			},
 			page: {
-				title: `Node-RED SFE ${developMode ? '[Design Time]' : '[Run Time]'}`
+				title: `Node-RED SFE [${getRunModeText()}]`
 			},
 			projects: {
 				enabled: false
@@ -90,12 +111,7 @@ const run = async () => {
 		nrSettings.disableEditor = false;
 	}
 
-	if (!developMode) {
-		if (!fs.existsSync(getUserDirPath())) {
-			const zip = new AdmZip(embeddedUserDirSnapshot);
-			zip.extractAllTo(getUserDirPath(), true);
-		}
-
+	if (!developMode && !noLoad) {
 		nrSettings.editorTheme.header.image = `${pathPrefix}snapshot/${ns}/build/resources/node-red.png`;
 		nrSettings.editorTheme.page.css = `${pathPrefix}snapshot/${ns}/build/resources/sfe.css`;
 		nrSettings.readOnly = true;
@@ -113,8 +129,19 @@ const run = async () => {
 	app.use(nrSettings.httpAdminRoot, RED.httpAdmin);
 	app.use(nrSettings.httpNodeRoot, RED.httpNode);
 
+	if (!developMode && !noLoad) {
+		if (!fs.existsSync(getUserDirPath())) {
+			log('info', `Unpacking userDir...`);
+			const zip = new AdmZip(embeddedUserDirSnapshot);
+			zip.extractAllTo(getUserDirPath(), true);
+			log('info', `Unpacking userDir...Done`);
+		}
+	}
+
 	log('info', `Node-RED Version: ${RED.version()}`);
-	log('info', `Run Mode: ${developMode ? 'Develop' : 'Production'}`);
+	log('info', `Run Mode: ${getRunModeText()}`);
+	log('info', `User Directory: ${getUserDirPath()}`);
+	log('info', `Flow File: ${getFlowFile()}`);
 
 	const baseURL = `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`;
 	const getAutoLoad = () => {
@@ -140,11 +167,11 @@ const run = async () => {
 			.then(() => {
 				const AL = getAutoLoad();
 				if (AL) {
-					log('info', `Opening AL: ${AL}`);
+					log('info', `Opening: ${AL}`);
 					open(AL);
 				} else {
 					if (developMode) {
-						log('info', `Opening AL: ${baseURL}`);
+						log('info', `Opening: ${baseURL}`);
 						open(baseURL);
 					}
 				}
