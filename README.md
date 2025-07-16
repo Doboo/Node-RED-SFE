@@ -199,8 +199,14 @@ if it does not exist - Node-RED SFE is currently not being used
 ## Logging Function.
 There is a built in `log` function, that is exposed in the Global Context, an example is below, it prints the entry to the console:
 ```js
-global.get('SFE').log('info', 'MyApplication', 'Hello, World')
+global.get('SFE').log.INFO('MyApplication', 'Hello, World')
 ```
+
+Available levels
+ - `INFO`
+ - `WARN` 
+ - `ERROR` 
+ - `DEBUG` 
 
 ## Disclaimer
 

@@ -138,7 +138,20 @@ const run = async () => {
 
 	nrSettings.functionGlobalContext = nrSettings.functionGlobalContext || {};
 	nrSettings.functionGlobalContext.SFE = {
-		log: log
+		log: {
+			INFO: (topic, message) => {
+				log('info', topic, message);
+			},
+			WARN: (topic, message) => {
+				log('warn', topic, message);
+			},
+			ERROR: (topic, message) => {
+				log('error', topic, message);
+			},
+			DEBUG: (topic, message) => {
+				log('debug', topic, message);
+			}
+		}
 	};
 
 	// Initialize Node-RED with the given settings
