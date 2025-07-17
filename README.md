@@ -98,6 +98,10 @@ const localfilesystem = require('@node-red/runtime/lib/nodes/context/localfilesy
  */
 
 module.exports = {
+	/* Node RED SFE Console Title */
+	/* This property is not related to Node RED, but SFE itself */
+	consoleTitle: 'Node RED SFE',
+
 	uiPort: 1880,
 	flowFilePretty: true,
 	httpAdminRoot: '/',
@@ -132,8 +136,7 @@ module.exports = {
 	/* Do what you want */
 	functionGlobalContext: {}
 };
-
- ```
+```
 
  There are a few important things to change here.
 

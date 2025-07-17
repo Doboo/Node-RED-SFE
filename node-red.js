@@ -82,6 +82,11 @@ const getRunModeText = (usenumber) => {
 };
 
 process.env['SFE'] = getRunModeText(true);
+if (nrRuntimeSettings.consoleTitle) {
+	process.stdout.write(
+		`${String.fromCharCode(27)}]0;${nrRuntimeSettings.consoleTitle}${String.fromCharCode(7)}`
+	);
+}
 
 // Main
 const run = async () => {
