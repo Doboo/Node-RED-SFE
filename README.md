@@ -175,7 +175,7 @@ After your SFE has been built, you can also use the executable as a standard Nod
 this will:
 
  - Switch the Home Directory to `.node-red` (Next to the executable)
- - Switch to using the modifiable flows file (`.node-red/flows.json`)
+ - Switch to using a modifiable flows file (`.node-red/flows.json`)
 
  Note: The settings that your baked in will still be used
 
