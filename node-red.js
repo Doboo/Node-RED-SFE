@@ -91,7 +91,7 @@ switch (runMode) {
 		break;
 
 	case 2:
-		Title = nrRuntimeSettings.consoleTitle ?? 'Node RED SFE';
+		Title = nrRuntimeSettings.consoleTitle || 'Node RED SFE';
 		break;
 }
 process.stdout.write(
