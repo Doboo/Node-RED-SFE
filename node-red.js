@@ -67,7 +67,7 @@ const getFlowFile = () => {
 	return embeddedUserFlowFile;
 };
 
-const getRunModeText = (usenumber) => {
+const getRunModeTextInt = (usenumber) => {
 	if (developMode) {
 		return usenumber ? 1 : 'Design Time';
 	}
@@ -81,12 +81,22 @@ const getRunModeText = (usenumber) => {
 	}
 };
 
-process.env['SFE'] = getRunModeText(true);
-if (nrRuntimeSettings.consoleTitle) {
-	process.stdout.write(
-		`${String.fromCharCode(27)}]0;${nrRuntimeSettings.consoleTitle}${String.fromCharCode(7)}`
-	);
+const runMode = getRunModeTextInt(true);
+process.env['SFE'] = runMode;
+let Title;
+switch (runMode) {
+	case 1:
+	case 3:
+		Title = `Node RED SFE: ${getRunModeTextInt()}`;
+		break;
+
+	case 2:
+		Title = nrRuntimeSettings.consoleTitle ?? 'Node RED SFE';
+		break;
 }
+process.stdout.write(
+	`${String.fromCharCode(27)}]0;${Title}${String.fromCharCode(7)}`
+);
 
 // Main
 const run = async () => {
@@ -111,10 +121,10 @@ const run = async () => {
 		},
 		editorTheme: {
 			header: {
-				title: `Node-RED SFE [${getRunModeText()}]`
+				title: `Node-RED SFE [${getRunModeTextInt()}]`
 			},
 			page: {
-				title: `Node-RED SFE [${getRunModeText()}]`
+				title: `Node-RED SFE [${getRunModeTextInt()}]`
 			},
 			projects: {
 				enabled: false
@@ -174,7 +184,7 @@ const run = async () => {
 	}
 
 	log('info', 'Node-RED Version', RED.version());
-	log('info', 'Run Mode', getRunModeText());
+	log('info', 'Run Mode', getRunModeTextInt());
 	log('info', 'User Directory', getUserDirPath());
 	log('info', 'Flow File', getFlowFile());
 
