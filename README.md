@@ -175,7 +175,7 @@ The final executable will contain an embedded file system, and this contains
 
  So all in, 2 directories are created, next to the executable
 
-  - `.node-red-sfe` : anything that is created in what is refered to as the Node RED Home Directory (exepect the flowsfile)
+  - `.node-red-sfe` : anything that is created in what is refered to as the Node RED Home Directory (except the flowsfile)
 
    - `.locales` : strings for the runtime
 
