@@ -173,11 +173,11 @@ The final executable will contain an embedded file system, and this contains
  
  Further more, a directory of `.locales` is expanded - this so Node RED can correctly reference strings used by `i18n` for its internal use
 
- So all in, 2 directories are created, next to the executable
+ So all in, 3 directories are created, next to the executable
 
-  - `.node-red-sfe` : anything that is created in what is refered to as the Node RED Home Directory (except the flowsfile)
-
-   - `.locales` : strings for the runtime
+  - `.node-red-sfe` : Anything that was snapshotted in what is refered to as the Node RED Home Directory (except the flowsfile)
+  - `.node-red` : The home directory created when `--noload` is used (includes a modifiable flows file)
+  - `.locales` : strings for the runtime
 
  
 
