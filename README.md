@@ -92,7 +92,6 @@ const localfilesystem = require('@node-red/runtime/lib/nodes/context/localfilesy
  * Note : The following properties/objects will be ignored as they are integral to the running of Node-RED SFE
  *  - userDir
  *  - flowFile
- *  - logging
  *  - editorTheme
  *  - readOnly
  */
@@ -113,6 +112,15 @@ module.exports = {
 	/* This should be set to true, JUST BEFORE compiling to an SFE */
 	/* But it will be ignored (forcibly set to false) during the development stage */
 	disableEditor: false,
+
+	/* Logging options */
+	logging: {
+		console: {
+			level: 'info',
+			metrics: false,
+			audit: false
+		}
+	},
 
 	/* Vital! IF NOT disabling the editor */
 	/* Default : admin:admin */
@@ -135,7 +143,7 @@ module.exports = {
 
 	/* Do what you want */
 	functionGlobalContext: {}
-};
+}
 ```
 
  There are a few important things to change here.
@@ -202,18 +210,6 @@ if it does not exist - Node-RED SFE is currently not being used
  - 1:  `Design Time`
  - 2:  `Production (Locked)`
  - 3:  `Production (Free Roam)` (`--noload`)
-
-## Logging Function.
-There is a built in `log` function, that is exposed in the Global Context, an example is below, it prints the entry to the console:
-```js
-global.get('SFE').log.INFO('MyApplication', 'Hello, World')
-```
-
-Available levels
- - `INFO`
- - `WARN` 
- - `ERROR` 
- - `DEBUG` 
 
 ## Disclaimer
 

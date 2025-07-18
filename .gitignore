@@ -8,3 +8,4 @@ package-lock.json
 .node-red-sfe.dat
 flows.json
 .flows.json.backup
+.locales.dat

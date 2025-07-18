@@ -6,7 +6,6 @@ const localfilesystem = require('@node-red/runtime/lib/nodes/context/localfilesy
  * Note : The following properties/objects will be ignored as they are integral to the running of Node-RED SFE
  *  - userDir
  *  - flowFile
- *  - logging
  *  - editorTheme
  *  - readOnly
  */
@@ -27,6 +26,15 @@ module.exports = {
 	/* This should be set to true, JUST BEFORE compiling to an SFE */
 	/* But it will be ignored (forcibly set to false) during the development stage */
 	disableEditor: false,
+
+	/* Logging options */
+	logging: {
+		console: {
+			level: 'info',
+			metrics: false,
+			audit: false
+		}
+	},
 
 	/* Vital! IF NOT disabling the editor */
 	/* Default : admin:admin */

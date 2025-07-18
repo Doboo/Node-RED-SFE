@@ -1,6 +1,9 @@
 module.exports = {
 	userDir: './.node-red-sfe',
 	noLoadUserDir: './.node-red',
+	flowsFile: 'flows.json',
+	localesDir: './.locales',
+	localesSource: './node_modules/@node-red/runtime/locales',
 	outputDir: './build',
 	inputFile: './node-red.js',
 	outputName: 'node-red-bundle.js',

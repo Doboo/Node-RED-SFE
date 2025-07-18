@@ -6,43 +6,34 @@ const { join, dirname } = require('path');
 const nrRuntimeSettings = require('./settings');
 const open = require('open');
 const AdmZip = require('adm-zip');
-const { userDir, noLoadUserDir, ns } = require('./constants');
-const dayjs = require('dayjs');
-const localizedFormat = require('dayjs/plugin/localizedFormat');
-const localeData = require('dayjs/plugin/localeData');
-dayjs.extend(localizedFormat);
-dayjs.extend(localeData);
+const {
+	userDir,
+	noLoadUserDir,
+	localesDir,
+	ns,
+	flowsFile
+} = require('./constants');
 
 /* ------  Don't mess with anything below - unless you're a nerd ;-) ------ */
 
 console.clear();
 
-console.log('Welcome to Node-RED-SFE');
-console.log('===================');
-console.log('');
-
-const log = (level, subject, message) => {
-	level = `[${level}]`;
-	const paddedSubject = subject.padEnd(17, ' ');
-	const paddedLevel = level.padEnd(7, ' ').toUpperCase();
-	console.log(
-		`${dayjs().format('L LTS')} ${paddedLevel} ${paddedSubject} : ${message}`
-	);
-};
-
 // OS Volume Prefix
 const pathPrefix = process.platform === 'win32' ? 'c:/' : '/';
 
-log('info', 'Platform', process.platform);
-log('info', 'Node Version', process.version);
-
 // Important paths
 const embeddedUserDirSnapshot = `${pathPrefix}snapshot/${ns}/build/${userDir}.dat`;
-const embeddedUserFlowFile = `${pathPrefix}snapshot/${ns}/build/flows.json`;
+const embeddedLocalsDirSnapshot = `${pathPrefix}snapshot/${ns}/build/${localesDir}.dat`;
+const embeddedUserFlowFile = `${pathPrefix}snapshot/${ns}/build/${flowsFile}`;
 
 // In develop mode?
 const developMode = process.argv[2] === '--develop';
 const noLoad = developMode === false && process.argv[2] === '--noload';
+
+// Get Locals Path
+const getLocalesPath = () => {
+	return join(dirname(process.execPath), localesDir);
+};
 
 // Get User Dir
 const getUserDirPath = () => {
@@ -58,10 +49,10 @@ const getUserDirPath = () => {
 // Get Flow File
 const getFlowFile = () => {
 	if (developMode) {
-		return join(__dirname, 'flows.json');
+		return join(__dirname, flowsFile);
 	}
 	if (noLoad) {
-		return join(getUserDirPath(), 'flows.json');
+		return join(getUserDirPath(), flowsFile);
 	}
 
 	return embeddedUserFlowFile;
@@ -104,7 +95,6 @@ const run = async () => {
 	const server = http.createServer(app);
 
 	delete nrRuntimeSettings.userDir;
-	delete nrRuntimeSettings.logging;
 	delete nrRuntimeSettings.editorTheme;
 	delete nrRuntimeSettings.flowFile;
 	delete nrRuntimeSettings.readOnly;
@@ -112,13 +102,6 @@ const run = async () => {
 	const nrSettings = {
 		userDir: getUserDirPath(),
 		flowFile: getFlowFile(),
-		logging: {
-			console: {
-				level: 'off',
-				metrics: false,
-				audit: false
-			}
-		},
 		editorTheme: {
 			header: {
 				title: `Node-RED SFE [${getRunModeTextInt()}]`
@@ -151,24 +134,6 @@ const run = async () => {
 		};
 	}
 
-	nrSettings.functionGlobalContext = nrSettings.functionGlobalContext || {};
-	nrSettings.functionGlobalContext.SFE = {
-		log: {
-			INFO: (topic, message) => {
-				log('info', topic, message);
-			},
-			WARN: (topic, message) => {
-				log('warn', topic, message);
-			},
-			ERROR: (topic, message) => {
-				log('error', topic, message);
-			},
-			DEBUG: (topic, message) => {
-				log('debug', topic, message);
-			}
-		}
-	};
-
 	// Initialize Node-RED with the given settings
 	RED.init(server, nrSettings);
 	app.use(nrSettings.httpAdminRoot, RED.httpAdmin);
@@ -176,17 +141,17 @@ const run = async () => {
 
 	if (!developMode && !noLoad) {
 		if (!fs.existsSync(getUserDirPath())) {
-			log('info', 'userDir', 'Unpacking userDir...');
 			const zip = new AdmZip(embeddedUserDirSnapshot);
 			zip.extractAllTo(getUserDirPath(), true);
-			log('info', 'userDir', 'Unpacking userDir...Done');
 		}
 	}
 
-	log('info', 'Node-RED Version', RED.version());
-	log('info', 'Run Mode', getRunModeTextInt());
-	log('info', 'User Directory', getUserDirPath());
-	log('info', 'Flow File', getFlowFile());
+	if (!developMode) {
+		if (!fs.existsSync(getLocalesPath())) {
+			const zip = new AdmZip(embeddedLocalsDirSnapshot);
+			zip.extractAllTo(getLocalesPath(), true);
+		}
+	}
 
 	const baseURL = `http://127.0.0.1:${nrSettings.uiPort}${nrSettings.httpAdminRoot}`;
 	const getAutoLoad = () => {
@@ -206,21 +171,19 @@ const run = async () => {
 	// Start the HTTP server
 	server.on('listening', (e) => {
 		RED.start()
-			.catch((err) => {
-				log('error', 'on listening', err.message);
-			})
+			.catch((err) => {})
 			.then(() => {
+				RED.log.info(`SFE Run Mode  :  ${getRunModeTextInt()}`);
 				const AL = getAutoLoad();
 				if (AL) {
-					log('info', 'Autoload', AL);
+					RED.log.info(`Opening  :  ${AL}`);
 					open(AL);
 				} else {
 					if (developMode) {
-						log('info', 'Autoload', baseURL);
+						RED.log.info(`Opening  :  ${baseURL}`);
 						open(baseURL);
 					}
 				}
-				log('info', 'Startup', 'Done');
 			});
 	});
 	server.listen(nrSettings.uiPort);
@@ -228,6 +191,5 @@ const run = async () => {
 
 // Run the main function and handle any errors
 run().catch((err) => {
-	log('error', 'on run', err.message);
 	process.exit(1);
 });

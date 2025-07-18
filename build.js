@@ -2,16 +2,20 @@ const esbuild = require('esbuild');
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
-const { userDir, outputDir, inputFile, outputName } = require('./constants');
+const {
+	userDir,
+	outputDir,
+	localesDir,
+	localesSource,
+	inputFile,
+	outputName,
+	flowsFile
+} = require('./constants');
 
 const outputFile = path.join(outputDir, outputName);
 const finalPkg = path.join(outputDir, 'package.json');
 const projectName = path.dirname(__filename).split(path.sep).pop();
 
-const nrPackageFile = path.join(
-	__dirname,
-	'node_modules/node-red/package.json'
-);
 const requestSourceFile = path.join(
 	__dirname,
 	'node_modules/@node-red/nodes/core/network/21-httprequest.js'
@@ -47,6 +51,7 @@ const nativeNodeModulesPlugin = {
 
 /* Things to not include during bundling */
 const externals = [
+	'@node-red/runtime/package.json',
 	'@node-red/nodes',
 	'@node-red/editor-client',
 	'@node-rs',
@@ -78,24 +83,45 @@ const copyExternalDependencies = (externals, outputDir) => {
 	});
 };
 
+const findPackageJson = (startDir) => {
+	let dir = path.resolve(startDir);
+
+	while (dir !== path.parse(dir).root) {
+		const candidate = path.join(dir, 'package.json');
+		if (fs.existsSync(candidate)) return candidate;
+		dir = path.dirname(dir);
+	}
+
+	return null;
+};
+
 const esBuildPackage = async (file) => {
-	const config = {
-		entryPoints: [file],
-		bundle: true,
-		platform: 'node',
-		target: 'node20',
-		allowOverwrite: true,
-		keepNames: true,
-		outfile: file
-	};
+	const absFile = path.resolve(file);
 
-	await esbuild.build(config);
+	try {
+		await esbuild.build({
+			entryPoints: [absFile],
+			bundle: true,
+			platform: 'node',
+			target: 'node20',
+			allowOverwrite: true,
+			keepNames: true,
+			outfile: absFile
+		});
+	} catch {}
 
-	const pathSplit = file.split('/');
-	const packageFile = `${pathSplit[0]}/${pathSplit[1]}/package.json`;
-	const packageJson = require(path.join(__dirname, packageFile));
-	packageJson.type = 'commonjs';
-	await fs.writeFileSync(packageFile, JSON.stringify(packageJson, null, 2));
+	const packageFile = findPackageJson(path.dirname(absFile));
+	if (!packageFile) return;
+
+	try {
+		const packageJsonRaw = fs.readFileSync(packageFile, 'utf8');
+		const packageJson = JSON.parse(packageJsonRaw);
+
+		if (packageJson.type !== 'commonjs') {
+			packageJson.type = 'commonjs';
+			fs.writeFileSync(packageFile, JSON.stringify(packageJson, null, 2));
+		}
+	} catch {}
 };
 
 /* Main */
@@ -123,11 +149,17 @@ const run = async () => {
 
 	await esbuild.build(config);
 
-	// Patch the output file with Node-RED version and embedded flow modifications
-	const nrVersion = require(nrPackageFile).version;
+	// Patch the output file, to address path resolution
 	const replacements = [
-		['var version;', `var version = "${nrVersion}";`],
-		['{SFE_PROJECT_DIR}', projectName]
+		[
+			'path.join(__dirname, "..", "package.json")',
+			'"./node_modules/@node-red/runtime/package.json"'
+		],
+		['{SFE_PROJECT_DIR}', projectName],
+		[
+			'path.resolve(path.join(__dirname, "..", "locales"))',
+			'path.resolve(path.join(dirname(process.execPath), ".locales"))'
+		]
 	];
 
 	await patchFile(outputFile, replacements);
@@ -149,7 +181,8 @@ const run = async () => {
 				'./node_modules/**',
 				'./resources/**',
 				`${userDir}.dat`,
-				'./flows.json'
+				`${localesDir}.dat`,
+				`./${flowsFile}`
 			]
 		}
 	};
@@ -159,17 +192,38 @@ const run = async () => {
 		fs.unlinkSync(sessionsPath);
 	}
 
-	const output = fs.createWriteStream(`${userDir}.dat`);
-	output.on('close', function () {
-		fs.copyFileSync(`${userDir}.dat`, path.join(outputDir, `${userDir}.dat`));
-		fs.copyFileSync('./flows.json', path.join(outputDir, 'flows.json'));
-	});
+	const packUserDir = () => {
+		const output = fs.createWriteStream(`${userDir}.dat`);
+		output.on('close', function () {
+			packLocales();
+		});
 
-	const Archiver = archiver('zip');
+		const Archiver = archiver('zip');
 
-	Archiver.pipe(output);
-	Archiver.directory(userDir, false);
-	Archiver.finalize();
+		Archiver.pipe(output);
+		Archiver.directory(userDir, false);
+		Archiver.finalize();
+	};
+
+	const packLocales = () => {
+		const output = fs.createWriteStream(`${localesDir}.dat`);
+		output.on('close', function () {
+			fs.copyFileSync(`${userDir}.dat`, path.join(outputDir, `${userDir}.dat`));
+			fs.copyFileSync(
+				`${localesDir}.dat`,
+				path.join(outputDir, `${localesDir}.dat`)
+			);
+			fs.copyFileSync(`./${flowsFile}`, path.join(outputDir, flowsFile));
+		});
+
+		const Archiver = archiver('zip');
+
+		Archiver.pipe(output);
+		Archiver.directory(localesSource, false);
+		Archiver.finalize();
+	};
+
+	packUserDir();
 
 	fs.writeFileSync(finalPkg, JSON.stringify(pkg, null, 2));
 };

@@ -19,8 +19,7 @@
 		"open": "^8.4.2",
 		"rimraf": "^5.0.0",
 		"archiver": "7.0.1",
-		"adm-zip": "0.5.16",
-		"dayjs": "1.11.13"
+		"adm-zip": "0.5.16"
 	},
 	"devDependencies": {
 		"eslint": "^9.18.0",
