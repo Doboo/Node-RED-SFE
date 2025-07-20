@@ -63,7 +63,7 @@ Node-RED SFE currently uses Node-RED 4.
 
  - Clone this repo
  - Issue `npm install`
- - Issue `npm run-script develop`
+ - Issue `npm run develop`
 
  You're now in 'Design Time'
 
@@ -74,8 +74,7 @@ Node-RED SFE currently uses Node-RED 4.
 
  Once you're happy, terminate Node-RED SFE
 
- - Issue `npm run-script build`
- - Issue `npm run-script package`
+ - Issue `npm run build`
 
  You will now have an SFE in `./build/dist` - Congratulations!
 
@@ -206,6 +205,8 @@ this will:
  ```sh
  MySFEApp --noload
  ```
+
+Note: If you did not develop a flow, before building (skipping `--develop`) - the **noload** run mode, is the default, and in effect - you have built a portable Node RED executable.
 
  ## Autoload a web interface.
 If you include a file of `AUTOLOAD` - along side your SFE, after the SFE has started  

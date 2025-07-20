@@ -28,7 +28,11 @@ const embeddedUserFlowFile = `${pathPrefix}snapshot/${ns}/build/${flowsFile}`;
 
 // In develop mode?
 const developMode = process.argv[2] === '--develop';
-const noLoad = developMode === false && process.argv[2] === '--noload';
+let noLoad = developMode === false && process.argv[2] === '--noload';
+
+if (!developMode && !fs.existsSync(embeddedUserFlowFile)) {
+	noLoad = true;
+}
 
 // Get Locals Path
 const getLocalesPath = () => {

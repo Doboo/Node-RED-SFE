@@ -18,8 +18,8 @@
 		"node-red": "4.0.8",
 		"open": "^8.4.2",
 		"rimraf": "^5.0.0",
-		"archiver": "7.0.1",
-		"adm-zip": "0.5.16"
+		"archiver": "^7.0.1",
+		"adm-zip": "^0.5.16"
 	},
 	"devDependencies": {
 		"eslint": "^9.18.0",
@@ -27,7 +27,7 @@
 	},
 	"scripts": {
 		"develop": "node node-red.js --develop",
-		"build": "npm run-script clean && node build.js",
+		"build": "npm run clean && node build.js && npm run package",
 		"clean": "rimraf ./build/",
 		"package": "cd ./build && pkg ./package.json --compress gzip --targets host --output ./dist/node-red-sfe"
 	}

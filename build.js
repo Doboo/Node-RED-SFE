@@ -213,7 +213,9 @@ const run = async () => {
 				`${localesDir}.dat`,
 				path.join(outputDir, `${localesDir}.dat`)
 			);
-			fs.copyFileSync(`./${flowsFile}`, path.join(outputDir, flowsFile));
+			if (fileExists(`./${flowsFile}`)) {
+				fs.copyFileSync(`./${flowsFile}`, path.join(outputDir, flowsFile));
+			}
 		});
 
 		const Archiver = archiver('zip');
