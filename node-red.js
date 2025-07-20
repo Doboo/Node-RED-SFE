@@ -68,11 +68,11 @@ const getRunModeTextInt = (usenumber) => {
 	}
 
 	if (!developMode && !noLoad) {
-		return usenumber ? 2 : 'Production (Locked)';
+		return usenumber ? 2 : 'Production (Embedded Flow)';
 	}
 
 	if (!developMode && noLoad) {
-		return usenumber ? 3 : 'Production (Free Roam)';
+		return usenumber ? 3 : 'Production (Clean)';
 	}
 };
 

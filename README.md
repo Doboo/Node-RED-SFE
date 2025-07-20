@@ -206,7 +206,7 @@ this will:
  MySFEApp --noload
  ```
 
-Note: If you did not develop a flow, before building (skipping `--develop`) - the ``noload`` run mode, is the default, and in effect - you have built a portable Node RED executable.
+Note: If you did not develop a flow, before building (skipping `npm run develop`) - the `noload` run mode, is the default, and in effect - you have built a portable Node RED executable.
 
  ## Autoload a web interface.
 If you include a file of `AUTOLOAD` - along side your SFE, after the SFE has started  
@@ -219,9 +219,9 @@ it will load your default browser with the URL that is contained in `AUTOLOAD`
 There is an Environment Variable of `SFE` and this denotes the mode currently running.  
 if it does not exist - Node-RED SFE is currently not being used
 
- - 1:  `Design Time`
- - 2:  `Production (Locked)`
- - 3:  `Production (Free Roam)` (`--noload`)
+ - `1`:  `Design Time`
+ - `2`:  `Production (Embedded Flow)`
+ - `3`:  `Production (Clean)` (`--noload`)
 
 ## Disclaimer
 

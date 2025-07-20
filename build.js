@@ -60,11 +60,6 @@ const externals = [
 	'./resources'
 ];
 
-// File exists
-const fileExists = (path) => {
-	return fs.existsSync(path);
-};
-
 /* Utility Functions */
 const patchFile = (filePath, replacements) => {
 	let content = fs.readFileSync(filePath, 'utf-8');
@@ -77,7 +72,7 @@ const patchFile = (filePath, replacements) => {
 const copyExternalDependencies = (externals, outputDir) => {
 	externals.map(async (ext) => {
 		const extPath = ext.startsWith('./') ? ext : path.join('node_modules', ext);
-		if (fileExists(extPath)) {
+		if (fs.existsSync(extPath)) {
 			fs.cpSync(extPath, path.join(outputDir, extPath), { recursive: true });
 		}
 	});
@@ -188,34 +183,40 @@ const run = async () => {
 	};
 
 	const sessionsPath = path.join(userDir, '.sessions.json');
-	if (fileExists(sessionsPath)) {
+	if (fs.existsSync(sessionsPath)) {
 		fs.unlinkSync(sessionsPath);
 	}
 
 	const packUserDir = () => {
-		const output = fs.createWriteStream(`${userDir}.dat`);
-		output.on('close', function () {
+		if (fs.existsSync(userDir)) {
+			const output = fs.createWriteStream(`${userDir}.dat`);
+			output.on('close', function () {
+				fs.copyFileSync(
+					`${userDir}.dat`,
+					path.join(outputDir, `${userDir}.dat`)
+				);
+				moveFlows();
+				packLocales();
+			});
+
+			const Archiver = archiver('zip');
+
+			Archiver.pipe(output);
+			Archiver.directory(userDir, false);
+			Archiver.finalize();
+		} else {
+			moveFlows();
 			packLocales();
-		});
-
-		const Archiver = archiver('zip');
-
-		Archiver.pipe(output);
-		Archiver.directory(userDir, false);
-		Archiver.finalize();
+		}
 	};
 
 	const packLocales = () => {
 		const output = fs.createWriteStream(`${localesDir}.dat`);
 		output.on('close', function () {
-			fs.copyFileSync(`${userDir}.dat`, path.join(outputDir, `${userDir}.dat`));
 			fs.copyFileSync(
 				`${localesDir}.dat`,
 				path.join(outputDir, `${localesDir}.dat`)
 			);
-			if (fileExists(`./${flowsFile}`)) {
-				fs.copyFileSync(`./${flowsFile}`, path.join(outputDir, flowsFile));
-			}
 		});
 
 		const Archiver = archiver('zip');
@@ -223,6 +224,12 @@ const run = async () => {
 		Archiver.pipe(output);
 		Archiver.directory(localesSource, false);
 		Archiver.finalize();
+	};
+
+	const moveFlows = () => {
+		if (fs.existsSync(`./${flowsFile}`)) {
+			fs.copyFileSync(`./${flowsFile}`, path.join(outputDir, flowsFile));
+		}
 	};
 
 	packUserDir();
