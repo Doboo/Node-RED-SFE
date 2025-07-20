@@ -206,7 +206,7 @@ this will:
  MySFEApp --noload
  ```
 
-Note: If you did not develop a flow, before building (skipping `--develop`) - the **noload** run mode, is the default, and in effect - you have built a portable Node RED executable.
+Note: If you did not develop a flow, before building (skipping `--develop`) - the ``noload`` run mode, is the default, and in effect - you have built a portable Node RED executable.
 
  ## Autoload a web interface.
 If you include a file of `AUTOLOAD` - along side your SFE, after the SFE has started  
