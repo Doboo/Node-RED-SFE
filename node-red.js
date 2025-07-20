@@ -96,6 +96,12 @@ process.stdout.write(
 
 // Main
 const run = async () => {
+	if (args.reset) {
+		if (fs.existsSync(getUserDirPath())) {
+			fs.rmSync(getUserDirPath(), { recursive: true, force: true });
+		}
+	}
+
 	const app = express();
 	const server = http.createServer(app);
 
