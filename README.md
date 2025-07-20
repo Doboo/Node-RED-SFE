@@ -206,6 +206,13 @@ this will:
  MySFEApp --noload
  ```
 
+ ## Override default port.
+The port that your SFE is using, is defined in the `settings.js` file, but you can override this during runtime.
+
+ ```sh
+ MySFEApp --port=1880
+ ```
+
 Note: If you did not develop a flow, before building (skipping `npm run develop`) - the `noload` run mode, is the default, and in effect - you have built a portable Node RED executable.
 
  ## Autoload a web interface.

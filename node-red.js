@@ -6,6 +6,7 @@ const { join, dirname } = require('path');
 const nrRuntimeSettings = require('./settings');
 const open = require('open');
 const AdmZip = require('adm-zip');
+const args = require('args-parser')(process.argv);
 const {
 	userDir,
 	noLoadUserDir,
@@ -27,8 +28,8 @@ const embeddedLocalsDirSnapshot = `${pathPrefix}snapshot/${ns}/build/${localesDi
 const embeddedUserFlowFile = `${pathPrefix}snapshot/${ns}/build/${flowsFile}`;
 
 // In develop mode?
-const developMode = process.argv[2] === '--develop';
-let noLoad = developMode === false && process.argv[2] === '--noload';
+const developMode = args.develop;
+let noLoad = developMode !== true && args.noload;
 
 if (!developMode && !fs.existsSync(embeddedUserFlowFile)) {
 	noLoad = true;
@@ -102,6 +103,10 @@ const run = async () => {
 	delete nrRuntimeSettings.editorTheme;
 	delete nrRuntimeSettings.flowFile;
 	delete nrRuntimeSettings.readOnly;
+
+	if (args.port) {
+		nrRuntimeSettings.uiPort = args.port;
+	}
 
 	const nrSettings = {
 		userDir: getUserDirPath(),
