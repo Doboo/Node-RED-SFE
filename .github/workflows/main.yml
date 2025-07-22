@@ -1,0 +1,100 @@
+# 工作流名称
+name: 多环境自动打包
+
+# 触发条件：推送到main分支或创建拉取请求到main分支时触发
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# 定义要运行的作业
+jobs:
+  build:
+    # 作业名称
+    name: 构建 ${{ matrix.os }}-${{ matrix.arch }} 版本
+    # 运行在不同的操作系统环境
+    runs-on: ${{ matrix.os }}
+    
+    # 定义矩阵，包含不同的操作系统和架构
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            arch: x64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+          - os: ubuntu-latest
+            platform: linux
+            arch: arm64
+      # 允许一个环境失败而不影响其他环境
+      fail-fast: false
+
+    # 作业步骤
+    steps:
+    # 步骤1：检出代码仓库
+    - uses: actions/checkout@v4
+
+    # 步骤2：设置Node.js环境（已更新为22.17版本）
+    - name: 设置Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22.17  # 已更新为指定的Node.js版本
+        cache: 'npm'        # 缓存npm依赖以加快构建速度
+
+    # 步骤3：安装项目依赖
+    - name: 安装项目依赖
+      run: npm install
+      continue-on-error: false  # 依赖安装失败则终止工作流
+
+    # 步骤4：针对ARM64架构的特殊处理
+    - name: ARM64架构额外依赖
+      if: matrix.arch == 'arm64'
+      run: |
+        # 安装ARM64架构可能需要的额外依赖
+        sudo apt-get update
+        sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+      shell: bash
+
+    # 步骤5：执行构建命令
+    - name: 构建项目
+      run: npm run build  # 执行打包命令
+      env:
+        # 传递环境变量给构建过程
+        NODE_ENV: production
+        PLATFORM: ${{ matrix.platform }}
+        ARCH: ${{ matrix.arch }}
+      continue-on-error: false  # 构建失败则终止工作流
+
+    # 步骤6：显示构建目录结构（调试用）
+    - name: 显示构建结果
+      run: |
+        echo "构建产物目录结构："
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          dir dist
+        else
+          ls -la dist
+        fi
+      shell: bash
+
+    # 步骤7：打包构建产物
+    - name: 打包构建产物
+      run: |
+        # 创建包含版本信息的压缩包名称
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          7z a build-${{ matrix.platform }}-${{ matrix.arch }}-$TIMESTAMP.zip ./dist/*
+        else
+          zip -r build-${{ matrix.platform }}-${{ matrix.arch }}-$TIMESTAMP.zip ./dist/*
+        fi
+      shell: bash
+
+    # 步骤8：上传构建产物作为Artifacts
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-${{ matrix.platform }}-${{ matrix.arch }}
+        path: build-${{ matrix.platform }}-${{ matrix.arch }}-*.zip
+        retention-days: 14  # 保留14天
