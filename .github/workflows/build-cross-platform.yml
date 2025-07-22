@@ -1,7 +1,6 @@
-# .github/workflows/build-cross-platform.yml
-name: 跨平台打包 Node-RED SFE
+# .github/workflows/build.yml
+name: 多环境手动打包
 
-# 支持手动触发（在需要时执行）
 on:
   workflow_dispatch:
     inputs:
@@ -20,76 +19,87 @@ on:
 
 jobs:
   build:
-    name: 构建 ${{ matrix.target }} 版本
+    name: 构建 ${{ matrix.platform }}-${{ matrix.arch }} 版本
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          # Windows x64 构建
           - os: windows-latest
-            target: windows-x64
-            pkgTarget: 'node18-win-x64'
-          # Linux x86 构建 (32位)
+            platform: windows
+            arch: x64
+            pkgTarget: 'node22-win-x64'
           - os: ubuntu-latest
-            target: linux-x86
-            pkgTarget: 'node18-linux-x86'
+            platform: linux
+            arch: x86
+            pkgTarget: 'node22-linux-x86'
             extraDeps: 'gcc-multilib g++-multilib'
-          # Linux arm64 构建
           - os: ubuntu-latest
-            target: linux-arm64
-            pkgTarget: 'node18-linux-arm64'
+            platform: linux
+            arch: arm64
+            pkgTarget: 'node22-linux-arm64'
             extraDeps: 'gcc-aarch64-linux-gnu g++-aarch64-linux-gnu'
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: 设置 Node.js 22.17.1
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.17.1'
-          cache: 'npm'
+    - name: 设置Node.js 22.17.1
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.17.1'
+        # 禁用缓存以避免锁文件检查错误
+        # cache: 'npm'
 
-      - name: 安装依赖
-        run: npm install
-        env:
-          NODE_ENV: ${{ github.event.inputs.buildType }}
+    - name: 安装依赖并生成package-lock.json
+      run: |
+        npm install
+        # 确保锁文件存在
+        if [ ! -f "package-lock.json" ]; then
+          npm install --package-lock-only
+        fi
+      shell: bash
 
-      - name: 安装架构特定依赖
-        if: matrix.extraDeps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ matrix.extraDeps }}
-        shell: bash
+    - name: 安装架构特定依赖
+      if: matrix.extraDeps
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ${{ matrix.extraDeps }}
+      shell: bash
 
-      - name: 构建项目
-        run: npm run build
-        env:
-          NODE_ENV: ${{ github.event.inputs.buildType }}
-          TARGET: ${{ matrix.target }}
+    - name: 构建项目
+      run: npm run build
+      env:
+        NODE_ENV: ${{ github.event.inputs.buildType }}
+        PLATFORM: ${{ matrix.platform }}
+        ARCH: ${{ matrix.arch }}
+        VERSION: ${{ github.event.inputs.version || github.sha }}
 
-      - name: 跨平台打包
-        run: |
-          cd ./build
-          npx pkg ./package.json --compress gzip --targets ${{ matrix.pkgTarget }} --output ./dist/node-red-sfe-${{ matrix.target }}
-        shell: bash
+    - name: 跨平台打包
+      run: |
+        cd ./build
+        npx @yao-pkg/pkg@6.2.0 ./package.json --compress gzip --targets ${{ matrix.pkgTarget }} --output ./dist/node-red-sfe-${{ matrix.platform }}-${{ matrix.arch }}
+      shell: bash
 
-      - name: 重命名构建产物（Windows）
-        if: matrix.os == 'windows-latest'
-        run: |
-          cd build/dist
-          ren node-red-sfe-${{ matrix.target }} node-red-sfe-${{ matrix.target }}.exe
-        shell: cmd
+    - name: 重命名Windows可执行文件
+      if: matrix.platform == 'windows'
+      run: |
+        cd build/dist
+        ren node-red-sfe-${{ matrix.platform }}-${{ matrix.arch }} node-red-sfe-${{ matrix.platform }}-${{ matrix.arch }}.exe
+      shell: cmd
 
-      - name: 打包构建产物
-        run: |
-          VERSION="${{ github.event.inputs.version || github.sha }}"
-          zip -r node-red-sfe-${{ matrix.target }}-$VERSION.zip ./build/dist/*
-        shell: bash
+    - name: 打包构建产物
+      run: |
+        VERSION="${{ github.event.inputs.version || github.sha }}"
+        if [ "${{ matrix.platform }}" = "windows" ]; then
+          7z a build-${{ matrix.platform }}-${{ matrix.arch }}-$VERSION.zip ./build/dist/*
+        else
+          zip -r build-${{ matrix.platform }}-${{ matrix.arch }}-$VERSION.zip ./build/dist/*
+        fi
+      shell: bash
 
-      - name: 上传构建产物
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-red-sfe-${{ matrix.target }}
-          path: node-red-sfe-${{ matrix.target }}-*.zip
-          retention-days: 30
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-${{ matrix.platform }}-${{ matrix.arch }}
+        path: build-${{ matrix.platform }}-${{ matrix.arch }}-*.zip
+        retention-days: 90
