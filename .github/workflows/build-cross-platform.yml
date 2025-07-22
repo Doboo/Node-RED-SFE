@@ -1,0 +1,95 @@
+# .github/workflows/build-cross-platform.yml
+name: 跨平台打包 Node-RED SFE
+
+# 支持手动触发（在需要时执行）
+on:
+  workflow_dispatch:
+    inputs:
+      buildType:
+        description: '构建类型'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - development
+      version:
+        description: '版本号（可选）'
+        required: false
+        type: string
+
+jobs:
+  build:
+    name: 构建 ${{ matrix.target }} 版本
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Windows x64 构建
+          - os: windows-latest
+            target: windows-x64
+            pkgTarget: 'node18-win-x64'
+          # Linux x86 构建 (32位)
+          - os: ubuntu-latest
+            target: linux-x86
+            pkgTarget: 'node18-linux-x86'
+            extraDeps: 'gcc-multilib g++-multilib'
+          # Linux arm64 构建
+          - os: ubuntu-latest
+            target: linux-arm64
+            pkgTarget: 'node18-linux-arm64'
+            extraDeps: 'gcc-aarch64-linux-gnu g++-aarch64-linux-gnu'
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Node.js 22.17.1
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.17.1'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm install
+        env:
+          NODE_ENV: ${{ github.event.inputs.buildType }}
+
+      - name: 安装架构特定依赖
+        if: matrix.extraDeps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.extraDeps }}
+        shell: bash
+
+      - name: 构建项目
+        run: npm run build
+        env:
+          NODE_ENV: ${{ github.event.inputs.buildType }}
+          TARGET: ${{ matrix.target }}
+
+      - name: 跨平台打包
+        run: |
+          cd ./build
+          npx pkg ./package.json --compress gzip --targets ${{ matrix.pkgTarget }} --output ./dist/node-red-sfe-${{ matrix.target }}
+        shell: bash
+
+      - name: 重命名构建产物（Windows）
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd build/dist
+          ren node-red-sfe-${{ matrix.target }} node-red-sfe-${{ matrix.target }}.exe
+        shell: cmd
+
+      - name: 打包构建产物
+        run: |
+          VERSION="${{ github.event.inputs.version || github.sha }}"
+          zip -r node-red-sfe-${{ matrix.target }}-$VERSION.zip ./build/dist/*
+        shell: bash
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-red-sfe-${{ matrix.target }}
+          path: node-red-sfe-${{ matrix.target }}-*.zip
+          retention-days: 30
